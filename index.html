@@ -1,0 +1,144 @@
+<!DOCTYPE text/html>
+<html lang="en">
+<head>
+    <title>Impact of COVID-19 on Hospitals</title>
+    <script src="https://d3js.org/d3.v7.min.js" charset="utf-8"></script>
+    <script src="https://unpkg.com/simple-statistics@7.7.0/dist/simple-statistics.min.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.min.js"></script>
+    <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.js"></script>
+    <script src="d3_coordinator.js"></script>
+    <script src="d3_timechart.js"></script>
+    <script src="d3_timeseries.js"></script>
+    <script src="d3_timeslider.js"></script>
+    <style>
+        body {
+            padding:0;
+            margin:0;
+        }
+
+        #header_area{
+            background-color: slategray;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #control_area {
+            float: left;
+            width: 15%;
+            padding: 15px;
+            background-color: #f1f1f1;
+            height: 600px;
+        }
+
+        h1{
+            font-family: sans-serif;
+            text-transform: uppercase;
+            margin: 20;
+        }
+
+        h2{
+            font-family: sans-serif;
+            text-transform: uppercase;
+            margin: 20;
+        }
+
+        /* Style information for axis labels */
+        .axis-label {
+            font-family: sans-serif;
+            font-size: 12px;
+        }
+
+        /* Style information for axis lines and tick marks */
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;
+        }
+
+        .axis text {
+            font-family: sans-serif;
+            font-size: 12px;
+        }
+
+        .chart-title {
+            font-family: sans-serif;
+            font-size: 16px;
+        }
+
+        /* This styles the tool tip. */
+        .tippy-box {
+            background-color: slategray;
+            color: white;
+            font-family: sans-serif;
+            padding: 5px 8px;
+            border-radius: 5px;
+            opacity: 0.9;
+            font-weight: bold;
+        }
+
+        .tippy-box table {
+            font-size: 8pt;
+            color: white;
+            text-align: left;
+        }
+
+        .tippy-box td {
+            text-align: right;
+        }
+
+    </style>
+</head>
+<body>
+<div id="header_area">
+    <h1>Impact of COVID-19 on Hospitals</h1>
+    <h2>Viola Goodacre & Vibhor Gupta &nbsp;&nbsp; | &nbsp;&nbsp; INLS-641 Visual Analytics</h2>
+</div>
+
+<div id="control_area">
+    <label for="param_select">Select Parameter: </label><br/>
+    <select id="param_select" onchange="coordinator.setParameter(this.value)">
+        <option value="staff">Critical Staffing Shortage</option>
+<!--        <option value="staff_anticipated">Critical Staffing Shortage Anticipated within Week</option>-->
+        <option value="deaths" selected>Deaths from COVID</option>
+        <option value="beds">Inpatient Beds Utilization</option>
+<!--        <option value="percent_beds">Percent COVID Inpatient Beds Utilization</option>-->
+    </select>
+
+    <br/><br/>
+    <label for="view_func_select">Select Aggregator: </label><br/>
+    <select id="view_func_select" onchange="coordinator.setParamFunction(this.value)">
+        <option value="mean" selected>Averages</option>
+        <option value="sum">Totals</option>
+    </select>
+
+    <br/><br/>
+    <input type="checkbox" id="per_num_hosps" name="per_num_hosps"
+       onchange="coordinator.setPerHospital(this.checked)">&nbsp;
+    <label for="per_num_hosps">Show per number of reporting hospitals</label>
+</div>
+
+<div id="vis_container"></div>
+<script>
+    var test_data = [
+    {"state":"AL","date":"9/1/2021","inpatient_beds_utilization":"0.808480104","inpatient_beds_utilization_coverage":"117","inpatient_bed_covid_utilization":"0.204283361",
+        "inpatient_bed_covid_utilization_coverage":"115","critical_staffing_shortage_today_yes":"33","critical_staffing_shortage_today_no":"71","critical_staffing_shortage_today_not_reported":"13",
+        "critical_staffing_shortage_anticipated_within_week_yes":"38","critical_staffing_shortage_anticipated_within_week_no":"65","critical_staffing_shortage_anticipated_within_week_not_reported":"14",
+        "deaths_covid":"47","deaths_covid_coverage":"115","inpatient_beds_utilization_per_hospital":"0.007030262","inpatient_bed_covid_utilization_per_hospital":"0.001776377","deaths_covid_per_hospital":"0.408695652"},
+
+    {"state":"AK","date":"9/2/2021","inpatient_beds_utilization":"0.686404834","inpatient_beds_utilization_coverage":"24","inpatient_bed_covid_utilization":"0.109365559",
+        "inpatient_bed_covid_utilization_coverage":"24","critical_staffing_shortage_today_yes":"2","critical_staffing_shortage_today_no":"21","critical_staffing_shortage_today_not_reported":"1",
+        "critical_staffing_shortage_anticipated_within_week_yes":"2","critical_staffing_shortage_anticipated_within_week_no":"21","critical_staffing_shortage_anticipated_within_week_not_reported":"1",
+        "deaths_covid":"2","deaths_covid_coverage":"24","inpatient_beds_utilization_per_hospital":"0.028600201","inpatient_bed_covid_utilization_per_hospital":"0.004556898","deaths_covid_per_hospital":"0.083333333"},
+
+    {"state":"AR","date":"9/3/2021","inpatient_beds_utilization":"0.760218556","inpatient_beds_utilization_coverage":"111","inpatient_bed_covid_utilization":"0.142359278",
+        "inpatient_bed_covid_utilization_coverage":"109","critical_staffing_shortage_today_yes":"21","critical_staffing_shortage_today_no":"88","critical_staffing_shortage_today_not_reported":"2",
+        "critical_staffing_shortage_anticipated_within_week_yes":"22","critical_staffing_shortage_anticipated_within_week_no":"87","critical_staffing_shortage_anticipated_within_week_not_reported":"2",
+        "deaths_covid":"30","deaths_covid_coverage":"109","inpatient_beds_utilization_per_hospital":"0.006974482","inpatient_bed_covid_utilization_per_hospital":"0.001306048","deaths_covid_per_hospital":"0.275229358"}
+];
+
+   // Initialize the visualization
+   var coordinator = new D3_Coordinator(test_data);
+</script>
+</body>
+</html>
